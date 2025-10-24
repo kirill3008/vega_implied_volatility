@@ -8,12 +8,13 @@ AlwaysBreakTemplateDeclarations: Yes
 DerivePointerAlignment: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^"[^\/]*\.h"$'      # 1: Pair header
+  - Regex: '^".*\.h"$'           # 1: Pair headers (with quotes)
     Priority: 1
   - Regex: '^<.*>$'              # 2: Standard/external headers
     Priority: 2
   - Regex: '.*'                  # 3: Project headers
     Priority: 3
-NamespaceIndentation: None
+NamespaceIndentation: All
+CompactNamespaces: false
 FixNamespaceComments: true
 SortIncludes: true

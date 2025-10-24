@@ -1,5 +1,6 @@
-#include <gtest/gtest.h>
 #include "src/core/black_scholes.h"
+
+#include <gtest/gtest.h>
 
 using namespace iv_calculator::core;
 

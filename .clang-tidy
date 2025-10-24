@@ -5,10 +5,11 @@ Checks: >
    modernize-*,
    bugprone-*,
    performance-*,
-   -modernize-use-trailing-return-type,
    -cppcoreguidelines-avoid-magic-numbers,
-   -readability-magic-numbers,
-   -bugprone-easily-swappable-parameters
+   -modernize-concat-nested-namespaces,
+   -modernize-use-trailing-return-type,
+   -performance-avoid-endl,
+   -readability-magic-numbers
 WarningsAsErrors: '*'
 HeaderFilterRegex: '.*'
 FormatStyle: file

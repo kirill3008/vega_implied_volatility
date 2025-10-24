@@ -15,3 +15,18 @@ target_link_libraries(core_tests
 
 # Add test to CTest
 add_test(NAME CoreTests COMMAND core_tests)
+
+# Create IO test executable
+add_executable(io_tests
+    io_tests/file_io_test.cpp
+)
+
+# Link against our library and Google Test
+target_link_libraries(io_tests
+    iv_core
+    ${GTEST_BOTH_LIBRARIES}
+    pthread  # Required on Linux
+)
+
+# Add IO test to CTest
+add_test(NAME IOTests COMMAND io_tests)

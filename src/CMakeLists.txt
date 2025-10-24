@@ -1,5 +1,6 @@
 add_library(iv_core
     core/black_scholes.cpp
+    io/file_io.cpp
 )
 
 # Public includes are in the include directory
