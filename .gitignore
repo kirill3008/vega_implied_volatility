@@ -1,0 +1,30 @@
+# Build folders
+build/
+cmake-build-*/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Object files and libraries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+
+# Executables
+*.exe
+*.out
+
+# Generated files
+docs/html/
+docs/latex/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/

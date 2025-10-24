@@ -1,0 +1,19 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 100
+AccessModifierOffset: -4
+AlwaysBreakTemplateDeclarations: Yes
+DerivePointerAlignment: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"[^\/]*\.h"$'      # 1: Pair header
+    Priority: 1
+  - Regex: '^<.*>$'              # 2: Standard/external headers
+    Priority: 2
+  - Regex: '.*'                  # 3: Project headers
+    Priority: 3
+NamespaceIndentation: None
+FixNamespaceComments: true
+SortIncludes: true
