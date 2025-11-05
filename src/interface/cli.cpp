@@ -1,4 +1,5 @@
 #include "src/core/black_scholes.h"
+#include "src/io/file_io.h"
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
 #include <fstream>
@@ -25,14 +26,27 @@ void print_usage() {
     std::cout << "  --strike PRICE         Strike price of the option" << std::endl;
     std::cout << "  --time YEARS           Time to expiration in years" << std::endl;
     std::cout << "  --rate RATE            Risk-free interest rate (as decimal)" << std::endl;
-    std::cout << "  --batch FILE           Process batch data from CSV file" << std::endl;
-    std::cout << "  --output FILE          Write results to CSV file" << std::endl;
+    std::cout << "  --input-file FILE      Process batch data from file" << std::endl;
+    std::cout << "  --input-format FORMAT  Input file format: csv or json (default: csv)"
+              << std::endl;
+    std::cout << "  --output-file FILE     Write results to file" << std::endl;
+    std::cout << "  --output-format FORMAT Output file format: csv or json (default: csv)"
+              << std::endl;
+    std::cout << "  --batch FILE           [Deprecated] Process batch data from CSV file (use "
+                 "--input-file instead)"
+              << std::endl;
+    std::cout << "  --output FILE          [Deprecated] Write results to CSV file (use "
+                 "--output-file instead)"
+              << std::endl;
     std::cout << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout
         << "  iv_calculator --call --asset 100 --strike 100 --time 1 --rate 0.05 --volatility 0.2"
         << std::endl;
     std::cout << "  iv_calculator --put --asset 100 --strike 100 --time 1 --rate 0.05 --price 5.57"
+              << std::endl;
+    std::cout << "  iv_calculator --input-file options.json --input-format json --output-file "
+                 "results.json --output-format json"
               << std::endl;
 }
 
@@ -47,6 +61,9 @@ struct Arguments {
     double volatility = -1.0;    // Negative means not provided
     std::string batch_file = "";
     std::string output_file = "";
+    std::string input_file = "";
+    std::string input_format = "csv";
+    std::string output_format = "csv";
     bool help_requested = false;
     bool is_valid = true;
 };
@@ -56,7 +73,7 @@ Arguments parse_arguments(int argc, char** argv) {
     Arguments args;
 
     for (int i = 1; i < argc; i++) {
-        std::string arg = argv[i]; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        std::string arg = argv[i];  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
         if (arg == "--help") {
             args.help_requested = true;
@@ -115,8 +132,31 @@ Arguments parse_arguments(int argc, char** argv) {
             }
         } else if (arg == "--batch" && i + 1 < argc) {
             args.batch_file = argv[++i];
+            // For backward compatibility
+            args.input_file = args.batch_file;
+            args.input_format = "csv";
         } else if (arg == "--output" && i + 1 < argc) {
             args.output_file = argv[++i];
+            // For backward compatibility
+            args.output_format = "csv";
+        } else if (arg == "--input-file" && i + 1 < argc) {
+            args.input_file = argv[++i];
+        } else if (arg == "--input-format" && i + 1 < argc) {
+            args.input_format = argv[++i];
+            if (args.input_format != "csv" && args.input_format != "json") {
+                std::cerr << "Error: Input format must be 'csv' or 'json'" << std::endl;
+                args.is_valid = false;
+                return args;
+            }
+        } else if (arg == "--output-file" && i + 1 < argc) {
+            args.output_file = argv[++i];
+        } else if (arg == "--output-format" && i + 1 < argc) {
+            args.output_format = argv[++i];
+            if (args.output_format != "csv" && args.output_format != "json") {
+                std::cerr << "Error: Output format must be 'csv' or 'json'" << std::endl;
+                args.is_valid = false;
+                return args;
+            }
         } else {
             std::cerr << "Error: Unknown option '" << arg << "'" << std::endl;
             args.is_valid = false;
@@ -125,7 +165,7 @@ Arguments parse_arguments(int argc, char** argv) {
     }
 
     // Validate required parameters for single calculation
-    if (args.batch_file.empty()) {
+    if (args.input_file.empty()) {
         if (args.asset_price <= 0 || args.strike_price <= 0 || args.time_to_expiry <= 0) {
             std::cerr << "Error: Asset price, strike price, and time to expiry must be positive"
                       << std::endl;
@@ -148,6 +188,93 @@ Arguments parse_arguments(int argc, char** argv) {
     return args;
 }
 
+// Process batch file using the io module
+bool process_batch_file_with_io(const std::string& input_file, const std::string& input_format,
+                                const std::string& output_file, const std::string& output_format) {
+    try {
+        // Load options data from input file
+        std::vector<iv_calculator::io::OptionData> options;
+
+        if (input_format == "csv") {
+            options = iv_calculator::io::read_csv(input_file);
+        } else if (input_format == "json") {
+            options = iv_calculator::io::read_json(input_file);
+        } else {
+            std::cerr << "Error: Unsupported input format '" << input_format << "'" << std::endl;
+            return false;
+        }
+
+        std::cout << "Loaded " << options.size() << " options from " << input_file << std::endl;
+
+        // Calculate implied volatility for each option
+        int processed = 0;
+        int errors = 0;
+
+        for (auto& option : options) {
+            try {
+                // If volatility is set but price isn't, calculate price
+                if (option.volatility > 0 && option.option_price <= 0) {
+                    option.option_price = black_scholes_price(
+                        option.is_call, option.asset_price, option.strike_price,
+                        option.time_to_expiry, option.risk_free_rate, option.volatility);
+
+                    // Print result to console
+                    std::cout << "Option: " << (option.is_call ? "Call" : "Put")
+                              << ", S=" << option.asset_price << ", K=" << option.strike_price
+                              << ", T=" << option.time_to_expiry << ", r=" << option.risk_free_rate
+                              << ", volatility=" << option.volatility
+                              << ", price=" << option.option_price << std::endl;
+                }
+                // If price is set but volatility isn't, calculate implied volatility
+                else if (option.option_price > 0 && option.volatility <= 0) {
+                    option.volatility = calculate_implied_volatility(
+                        option.is_call, option.asset_price, option.strike_price,
+                        option.time_to_expiry, option.risk_free_rate, option.option_price);
+
+                    // Print result to console
+                    std::cout << "Option: " << (option.is_call ? "Call" : "Put")
+                              << ", S=" << option.asset_price << ", K=" << option.strike_price
+                              << ", T=" << option.time_to_expiry << ", r=" << option.risk_free_rate
+                              << ", price=" << option.option_price
+                              << ", implied volatility=" << option.volatility << std::endl;
+                }
+                // If both are set, we'll just use them as-is
+                processed++;
+            } catch (const std::exception& e) {
+                std::cerr << "Error processing option: " << e.what() << std::endl;
+                errors++;
+            }
+        }
+
+        // Write results to output file if specified
+        if (!output_file.empty()) {
+            bool success = false;
+            if (output_format == "csv") {
+                success = iv_calculator::io::write_csv(output_file, options);
+            } else if (output_format == "json") {
+                success = iv_calculator::io::write_json(output_file, options);
+            } else {
+                std::cerr << "Error: Unsupported output format '" << output_format << "'"
+                          << std::endl;
+                return false;
+            }
+
+            if (success) {
+                std::cout << "Results written to " << output_file << std::endl;
+            } else {
+                std::cerr << "Error writing to " << output_file << std::endl;
+                return false;
+            }
+        }
+
+        std::cout << "Batch processing complete. Processed " << processed << " items with "
+                  << errors << " errors." << std::endl;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return false;
+    }
+}
 // Process batch file (simple CSV format)
 bool process_batch_file(const std::string& input_file, const std::string& output_file) {
     std::ifstream infile(input_file);
@@ -200,7 +327,7 @@ bool process_batch_file(const std::string& input_file, const std::string& output
             double price_or_vol = std::stod(tokens[5]);
             bool is_price = (tokens.size() > 6 && tokens[6] == "price") || tokens.size() == 6;
 
-            double result = std::numeric_limits<double>::quiet_NaN(); // Initialize to NaN
+            double result = std::numeric_limits<double>::quiet_NaN();  // Initialize to NaN
             if (is_price) {
                 // Calculate implied volatility
                 result =
@@ -260,11 +387,21 @@ int main(int argc, char** argv) {
     }
 
     // Process batch mode if batch file is provided
-    if (!args.batch_file.empty()) {
-        if (!process_batch_file(args.batch_file, args.output_file)) {
-            return 1;
+    if (!args.input_file.empty()) {
+        // Use the new IO-based batch processor if input format is JSON or the new flags are used
+        if (args.input_format == "json" || args.output_format == "json" ||
+            args.input_file != args.batch_file) {
+            if (!process_batch_file_with_io(args.input_file, args.input_format, args.output_file,
+                                            args.output_format)) {
+                return 1;
+            }
+        } else {
+            // Use legacy batch processor for backward compatibility
+            if (!process_batch_file(args.batch_file, args.output_file)) {
+                return 1;
+            }
         }
-        return 0;
+        return 1;
     }
 
     // Process single calculation

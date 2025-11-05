@@ -1,11 +1,12 @@
 Checks: >
    clang-diagnostic-*,
-   clang-analyzer-*,
    cppcoreguidelines-*,
    modernize-*,
    bugprone-*,
    performance-*,
+   -clang-analyzer-*,
    -cppcoreguidelines-avoid-magic-numbers,
+   -bugprone-easily-swappable-parameters,
    -modernize-concat-nested-namespaces,
    -modernize-use-trailing-return-type,
    -performance-avoid-endl,
