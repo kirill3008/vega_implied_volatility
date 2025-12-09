@@ -23,6 +23,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Export compile commands for clang tools
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Code coverage setup
+option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+if(ENABLE_COVERAGE)
+    # Set compiler flags for coverage
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
+    message(STATUS "Code coverage enabled: compiler flags set")
+endif()
+
 include_directories(${CMAKE_SOURCE_DIR})
 
 # Add third-party dependencies first
